@@ -1,6 +1,6 @@
 [package]
 name = "aufind"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["kykc"]
 edition = "2018"
 
@@ -17,3 +17,4 @@ walkdir = "*"
 regex = "*"
 clap = "^2.32"
 text_io = "*"
+colored = "^1.6"

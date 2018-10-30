@@ -1,3 +1,6 @@
+extern crate colored;
+
+use colored::*;
 
 pub fn search(pattern: &str, target: &str) {
     let re = regex::Regex::new(pattern);
@@ -5,7 +8,8 @@ pub fn search(pattern: &str, target: &str) {
         match &re {
             Ok(reg) => {
                 if reg.is_match(entry.path().to_str().unwrap_or("")) {
-                    println!("{}", entry.path().display());
+                    let after = reg.replace_all(entry.path().to_str().unwrap_or(""), "$0".yellow().to_string().as_str());
+                    println!("{}", after);
                 }
             },
             Err(_x) => { println!("{}", entry.path().display()); }

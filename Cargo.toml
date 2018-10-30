@@ -1,0 +1,19 @@
+[package]
+name = "aufind"
+version = "0.1.0"
+authors = ["kykc"]
+edition = "2018"
+
+[lib]
+name = "aufindlib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "aufind"
+path = "src/main.rs"
+
+[dependencies]
+walkdir = "*"
+regex = "*"
+clap = "^2.32"
+text_io = "*"

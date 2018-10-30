@@ -1,8 +1,8 @@
 [package]
 name = "aufind"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["kykc"]
-edition = "2018"
+edition = "2015"
 
 [lib]
 name = "aufindlib"
@@ -16,5 +16,6 @@ path = "src/main.rs"
 walkdir = "*"
 regex = "*"
 clap = "^2.32"
-text_io = "*"
+rustyline = "^2.1"
 colored = "^1.6"
+dirs = "*"

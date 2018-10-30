@@ -1,11 +1,35 @@
 extern crate aufindlib;
 extern crate clap;
-#[macro_use] extern crate text_io;
+extern crate dirs;
+extern crate rustyline;
 
 use clap::{Arg, App, SubCommand};
-use std::io::Write;
+use rustyline::Editor;
+use std::path::Path;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const HISTORY_FILE: &'static str = ".aufind_history";
+
+fn query_worker(target: &str) {
+    let mut rl = Editor::<()>::new();
+    let history_file = Path::new(&dirs::home_dir().expect("Cannot get location of home dir")).join(HISTORY_FILE);
+
+    if rl.load_history(&history_file).is_err() {
+        println!("Note: no previous history found");
+    }
+    let readline = rl.readline("?> ");
+
+    match readline {
+        Ok(line) => {
+            aufindlib::search(&line, target);
+            rl.add_history_entry(line.as_ref());
+            rl.save_history(&history_file).expect("Failed to store history");
+        },
+        Err(_) => {
+            println!("Cancelled, exiting");
+        }
+    }
+}
 
 fn main() {
 
@@ -29,10 +53,7 @@ fn main() {
         let target = ".";
         aufindlib::search(pattern, target);
     } else if let Some(_) = matches.subcommand_matches("query") {
-        print!("?> ");
-        std::io::stdout().flush().expect("cannot flush stdout, this is time to panic!");
-        let pattern: String = read!("{}\n");
         let target = ".";
-        aufindlib::search(&pattern, target);
+        query_worker(target);
     }
 }

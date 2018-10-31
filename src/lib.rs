@@ -80,6 +80,8 @@ pub fn search<'a>(args: &'a SearchArgs, callback: &mut FnMut(&str)) {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     #[test]
     fn test_on_self() {
         let mut results = Vec::new();
@@ -90,7 +92,7 @@ mod tests {
 
         assert_eq!(results.len(), 2);
         // TODO: will fail on windows
-        assert_eq!(results[0], "./src/lib.rs");
-        assert_eq!(results[1], "./src/main.rs");
+        assert_eq!(Path::new(&results[0]), Path::new(".").join("src").join("lib.rs"));
+        assert_eq!(Path::new(&results[1]), Path::new(".").join("src").join("main.rs"));
     }
 }

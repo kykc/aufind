@@ -12,7 +12,9 @@ pub struct SearchArgs<'a> {
     pub highlight: bool,
     pattern: &'a str,
     pub target: &'a str,
-    pub case_insensitive: bool
+    pub case_insensitive: bool,
+    pub include_dirs: bool,
+    pub include_files: bool
 }
 
 impl<'a> SearchArgs<'a> {
@@ -38,14 +40,27 @@ impl<'a> Default for SearchArgs<'a> {
             highlight: true,
             pattern: DEFAULT_PATTERN,
             target: DEFAULT_TARGET,
-            case_insensitive: false
+            case_insensitive: false,
+            include_dirs: false,
+            include_files: true
         }
     }
 }
 
 pub fn search<'a>(args: &'a SearchArgs, callback: &mut FnMut(&str)) {
     let re = regex::Regex::new(&args.construct_pattern());
-    for entry in walkdir::WalkDir::new(args.target).into_iter().filter_map(|e| e.ok()) {
+
+    let filter: Box<Fn(&walkdir::DirEntry) -> bool> = if args.include_dirs && args.include_files {
+        Box::new(|_| true)
+    } else if args.include_dirs {
+        Box::new(|x| x.path().is_dir())
+    } else if args.include_files {
+        Box::new(|x| x.path().exists() && !x.path().is_dir())
+    } else {
+        Box::new(|x| false)
+    };
+
+    for entry in walkdir::WalkDir::new(args.target).into_iter().filter_map(|e| e.ok()).filter(filter.as_ref()) {
         match &re {
             Ok(reg) => {
                 if reg.is_match(entry.path().to_str().unwrap_or("")) {

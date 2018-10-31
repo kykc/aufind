@@ -57,7 +57,7 @@ pub fn search<'a>(args: &'a SearchArgs, callback: &mut FnMut(&str)) {
     } else if args.include_files {
         Box::new(|x| x.path().exists() && !x.path().is_dir())
     } else {
-        Box::new(|x| false)
+        Box::new(|_| false)
     };
 
     for entry in walkdir::WalkDir::new(args.target).into_iter().filter_map(|e| e.ok()).filter(filter.as_ref()) {

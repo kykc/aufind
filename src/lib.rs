@@ -91,7 +91,6 @@ mod tests {
         super::search(&args, &mut |x| results.push(String::from(x)));
 
         assert_eq!(results.len(), 2);
-        // TODO: will fail on windows
         assert_eq!(Path::new(&results[0]), Path::new(".").join("src").join("lib.rs"));
         assert_eq!(Path::new(&results[1]), Path::new(".").join("src").join("main.rs"));
     }

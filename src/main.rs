@@ -85,7 +85,7 @@ fn main() {
 
     let matches = App::new("aufind")
         .version(VERSION)
-        .author("Automatl <ya@tomatl.org")
+        .author("Alexander Prokopchuk <ya@tomatl.org>")
         .about("Simple file search utility")
         .subcommand(SubCommand::with_name("find")
                     .about("parse from CLI")

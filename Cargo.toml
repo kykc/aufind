@@ -1,8 +1,10 @@
 [package]
 name = "aufind"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["kykc"]
 edition = "2015"
+license = "MIT"
+description = "Simple file search with possibility to avoid shell escaping regexes"
 
 [lib]
 name = "aufindlib"
@@ -19,3 +21,6 @@ clap = "^2.32"
 rustyline = "^2.1"
 colored = "^1.6"
 dirs = "*"
+
+[package.metadata.deb]
+depends = "libgcc1 (>= 1:6.3.0), libc6 (>= 2.24)"

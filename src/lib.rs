@@ -4,8 +4,8 @@ use colored::*;
 
 #[allow(dead_code)]
 const EMPTY_STRING: &'static str = "";
-const DEFAULT_PATTERN: &'static str = ".*";
-const DEFAULT_TARGET: &'static str = ".";
+pub const DEFAULT_PATTERN: &'static str = ".*";
+pub const DEFAULT_TARGET: &'static str = ".";
 
 #[derive(Clone, Debug)]
 pub struct SearchArgs<'a> {

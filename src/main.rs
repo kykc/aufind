@@ -121,7 +121,7 @@ fn main() {
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("find") {
-        let args = args_from_matches(&matches).with_pattern(matches.value_of(ARG_PATTERN).unwrap_or(".*"));
+        let args = args_from_matches(&matches).with_pattern(matches.value_of(ARG_PATTERN).unwrap_or(aufindlib::DEFAULT_PATTERN));
         aufindlib::search(&args, &mut |x| println!("{}", x));
     } else if let Some(matches) = matches.subcommand_matches("query") {
         let args = args_from_matches(&matches);

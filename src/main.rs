@@ -12,16 +12,17 @@ const HISTORY_FILE: &'static str = ".aufind_history";
 
 fn query_worker(target: &str) {
     let mut rl = Editor::<()>::new();
-    let history_file = Path::new(&dirs::home_dir().expect("Cannot get location of home dir")).join(HISTORY_FILE);
+    let history_file = Path::new(&dirs::home_dir()
+        .expect("Cannot get location of home dir")).join(HISTORY_FILE);
 
     if rl.load_history(&history_file).is_err() {
         println!("Note: no previous history found");
     }
-    let readline = rl.readline("?> ");
+    let read_line = rl.readline("?> ");
 
-    match readline {
+    match read_line {
         Ok(line) => {
-            aufindlib::search(&line, target);
+            aufindlib::search(true,&line, target, &mut |x| println!("{}", x));
             rl.add_history_entry(line.as_ref());
             rl.save_history(&history_file).expect("Failed to store history");
         },
@@ -51,7 +52,7 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("find") {
         let pattern = matches.value_of("PATTERN").unwrap_or(".*");
         let target = ".";
-        aufindlib::search(pattern, target);
+        aufindlib::search(true, pattern, target, &mut |x| println!("{}", x));
     } else if let Some(_) = matches.subcommand_matches("query") {
         let target = ".";
         query_worker(target);

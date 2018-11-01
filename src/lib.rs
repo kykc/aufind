@@ -12,7 +12,7 @@ pub struct SearchArgs<'a> {
     pub highlight: bool,
     pattern: &'a str,
     pub target: &'a str,
-    pub case_insensitive: bool,
+    pub case_sensitive: bool,
     pub include_dirs: bool,
     pub include_files: bool
 }
@@ -26,7 +26,7 @@ impl<'a> SearchArgs<'a> {
     }
 
     pub fn construct_pattern(&self) -> String {
-        if self.case_insensitive {
+        if !self.case_sensitive {
             String::from("(?i)") + self.pattern
         } else {
             String::from(self.pattern)
@@ -42,7 +42,7 @@ impl<'a> Default for SearchArgs<'a> {
             highlight: highlight_default,
             pattern: DEFAULT_PATTERN,
             target: DEFAULT_TARGET,
-            case_insensitive: false,
+            case_sensitive: true,
             include_dirs: false,
             include_files: true
         }

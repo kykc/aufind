@@ -10,7 +10,7 @@ use std::path::Path;
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const HISTORY_FILE: &'static str = ".aufind_history";
 
-const ARG_CASE_INSENSITIVE: &'static str = "CASE_INSENSITIVE";
+const ARG_CASE_SENSITIVE: &'static str = "CASE_SENSITIVE";
 const ARG_PATTERN: &'static str = "PATTERN";
 const ARG_INCLUDE_DIRS: &'static str = "INCLUDE_DIRS";
 const ARG_INCLUDE_FILES: &'static str = "INCLUDE_FILES";
@@ -65,7 +65,7 @@ fn query_worker(args: &aufindlib::SearchArgs) {
 
 fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a> {
     let mut args = aufindlib::SearchArgs::default();
-    args.case_insensitive = to_bool(matches.value_of(ARG_CASE_INSENSITIVE).expect("Defaulted option should always present"));
+    args.case_sensitive = to_bool(matches.value_of(ARG_CASE_SENSITIVE).expect("Defaulted option should always present"));
     args.include_dirs = to_bool(matches.value_of(ARG_INCLUDE_DIRS).expect("Defaulted option should always present"));
     args.include_files = to_bool(matches.value_of(ARG_INCLUDE_FILES).expect("Defaulted option should always present"));
     args.highlight = to_bool(matches.value_of(ARG_HIGHLIGHT_OUTPUT).expect("Defaulted option should always present"));
@@ -76,11 +76,11 @@ fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a
 fn main() {
     let default_args = aufindlib::SearchArgs::default();
 
-    let arg_case_sensitive = Arg::with_name(ARG_CASE_INSENSITIVE)
-        .help("Toggle case insensitive")
+    let arg_case_sensitive = Arg::with_name(ARG_CASE_SENSITIVE)
+        .help("Toggle case sensitivity")
         .required(false)
         .takes_value(true)
-        .default_value(from_bool(default_args.case_insensitive))
+        .default_value(from_bool(default_args.case_sensitive))
         .short("c")
         .long("case-sensitive");
 

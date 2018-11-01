@@ -19,7 +19,7 @@ const ARG_HIGHLIGHT_OUTPUT: &'static str = "HIGHLIGHT_OUTPUT";
 const TRUE_STR: &'static str = "true";
 const FALSE_STR: &'static str = "false";
 
-const STRINGS_CONSIDERED_FALSE: [&'static str; 3] = ["false", "0", ""];
+const STRINGS_CONSIDERED_FALSE: [&'static str; 4] = ["false", "0", "", "no"];
 
 fn to_bool(val: &str) -> bool {
     let lower = String::from(val).to_lowercase();

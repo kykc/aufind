@@ -16,6 +16,9 @@ const ARG_INCLUDE_DIRS: &'static str = "INCLUDE_DIRS";
 const ARG_INCLUDE_FILES: &'static str = "INCLUDE_FILES";
 const ARG_HIGHLIGHT_OUTPUT: &'static str = "HIGHLIGHT_OUTPUT";
 
+const TRUE_STR: &'static str = "true";
+const FALSE_STR: &'static str = "false";
+
 const STRINGS_CONSIDERED_FALSE: [&'static str; 3] = ["false", "0", ""];
 
 fn to_bool(val: &str) -> bool {
@@ -28,6 +31,14 @@ fn to_bool(val: &str) -> bool {
     }
 
     result
+}
+
+fn from_bool(val: bool) -> &'static str {
+    if val {
+        TRUE_STR
+    } else {
+        FALSE_STR
+    }
 }
 
 fn query_worker(args: &aufindlib::SearchArgs) {
@@ -63,13 +74,13 @@ fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a
 }
 
 fn main() {
-    let highlight_default = if cfg!(windows) { false } else { true };
+    let default_args = aufindlib::SearchArgs::default();
 
     let arg_case_sensitive = Arg::with_name(ARG_CASE_INSENSITIVE)
         .help("Toggle case insensitive")
         .required(false)
         .takes_value(true)
-        .default_value("true")
+        .default_value(from_bool(default_args.case_insensitive))
         .short("c")
         .long("case-sensitive");
 
@@ -77,7 +88,7 @@ fn main() {
         .help("Include directories in search results")
         .required(false)
         .takes_value(true)
-        .default_value("false")
+        .default_value(from_bool(default_args.include_dirs))
         .short("d")
         .long("include-dirs");
 
@@ -85,7 +96,7 @@ fn main() {
         .help("Include files in search results")
         .required(false)
         .takes_value(true)
-        .default_value("true")
+        .default_value(from_bool(default_args.include_files))
         .short("f")
         .long("include-files");
 
@@ -93,7 +104,7 @@ fn main() {
         .help("Highlight matches in output")
         .required(false)
         .takes_value(true)
-        .default_value(if highlight_default {"true"} else {"false"})
+        .default_value(from_bool(default_args.highlight))
         .short("h")
         .long("highlight-output");
 
@@ -121,8 +132,9 @@ fn main() {
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("find") {
+        let default_pattern = default_args.construct_pattern();
         let args = args_from_matches(&matches)
-            .with_pattern(matches.value_of(ARG_PATTERN).unwrap_or(aufindlib::DEFAULT_PATTERN));
+            .with_pattern(matches.value_of(ARG_PATTERN).unwrap_or(&default_pattern));
         aufindlib::search(&args, &mut |x| println!("{}", x));
     } else if let Some(matches) = matches.subcommand_matches("query") {
         let args = args_from_matches(&matches);

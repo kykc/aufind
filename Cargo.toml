@@ -18,7 +18,7 @@ path = "src/main.rs"
 walkdir = "*"
 regex = "*"
 clap = "^2.32"
-rustyline = "^2.1"
+rustyline = "^4"
 colored = "^1.6"
 dirs = "*"
 

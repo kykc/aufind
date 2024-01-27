@@ -54,7 +54,7 @@ fn query_worker(args: &aufindlib::SearchArgs) {
     match read_line {
         Ok(line) => {
             aufindlib::search(&args.with_pattern(&line), &mut |x| println!("{}", x));
-            rl.add_history_entry(line.as_ref());
+            rl.add_history_entry(line.as_str());
             rl.save_history(&history_file).expect("Failed to store history");
         },
         Err(_) => {

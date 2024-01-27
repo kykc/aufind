@@ -49,10 +49,10 @@ impl<'a> Default for SearchArgs<'a> {
     }
 }
 
-pub fn search<'a>(args: &'a SearchArgs, callback: &mut FnMut(&str)) {
+pub fn search<'a>(args: &'a SearchArgs, callback: &mut dyn FnMut(&str)) {
     let re = regex::Regex::new(&args.construct_pattern());
 
-    let filter: Box<Fn(&walkdir::DirEntry) -> bool> = if args.include_dirs && args.include_files {
+    let filter: Box<dyn Fn(&walkdir::DirEntry) -> bool> = if args.include_dirs && args.include_files {
         Box::new(|_| true)
     } else if args.include_dirs {
         Box::new(|x| x.path().is_dir())

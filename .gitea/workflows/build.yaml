@@ -1,0 +1,18 @@
+name: build deb package
+run-name: ${{ gitea.actor }} is building aufind
+on: [push]
+
+jobs:
+  build-deb:
+    runs-on: automatl-rust-1.75
+    if: gitea.ref == 'refs/heads/master'
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: build deb
+        run: |
+          cargo deb --output aufind.deb
+      - name: upload deb
+        run: |
+          curl --user automatl:${{ secrets.CI_TOKEN }} --upload-file aufind.deb ${{ vars.AU_GITEA_HOST }}/api/packages/audist/debian/pool/jammy/main/upload
+

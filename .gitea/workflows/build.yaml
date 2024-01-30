@@ -14,5 +14,5 @@ jobs:
           cargo deb --output aufind.deb
       - name: upload deb
         run: |
-          curl --user automatl:${{ secrets.CI_TOKEN }} --upload-file aufind.deb ${{ vars.AU_GITEA_HOST }}/api/packages/audist/debian/pool/jammy/main/upload
+          curl --fail-with-body --no-progress-meter -i -w "\n" --user automatl:${{ secrets.CI_TOKEN }} --upload-file aufind.deb ${{ vars.AU_GITEA_HOST }}/api/packages/audist/debian/pool/jammy/main/upload
 

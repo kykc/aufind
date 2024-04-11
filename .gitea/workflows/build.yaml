@@ -9,6 +9,9 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
+      - name: run tests
+        run: |
+          cargo test
       - name: build deb
         run: |
           cargo deb --output aufind.deb

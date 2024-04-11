@@ -14,7 +14,7 @@ const ARG_CASE_SENSITIVE: &'static str = "CASE_SENSITIVE";
 const ARG_PATTERN: &'static str = "PATTERN";
 const ARG_INCLUDE_DIRS: &'static str = "INCLUDE_DIRS";
 const ARG_EXCLUDE_FILES: &'static str = "EXCLUDE_FILES";
-const ARG_HIGHLIGHT_OUTPUT: &'static str = "HIGHLIGHT_OUTPUT";
+const ARG_NO_OUTPUT_HIGHLIGHTING: &'static str = "NO_OUTPUT_HIGHLIGHTING";
 const ARG_USE_GITIGNORE: &'static str = "USE_GITIGNORE";
 const ARG_EXCLUDE_HIDDEN: &'static str = "EXCLUDE_HIDDEN";
 
@@ -45,7 +45,7 @@ fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a
     args.case_sensitive = matches.is_present(ARG_CASE_SENSITIVE);
     args.include_dirs = matches.is_present(ARG_INCLUDE_DIRS);
     args.include_files = !matches.is_present(ARG_EXCLUDE_FILES);
-    args.highlight = matches.is_present(ARG_HIGHLIGHT_OUTPUT);
+    args.highlight = !matches.is_present(ARG_NO_OUTPUT_HIGHLIGHTING);
     args.use_gitignore = matches.is_present(ARG_USE_GITIGNORE);
     args.exclude_hidden = matches.is_present(ARG_EXCLUDE_HIDDEN);
 
@@ -90,12 +90,12 @@ fn main() {
         .short("f")
         .long("exclude-files");
 
-    let arg_highlight_output = Arg::with_name(ARG_HIGHLIGHT_OUTPUT)
-        .help("Highlight matches in output")
+    let arg_highlight_output = Arg::with_name(ARG_NO_OUTPUT_HIGHLIGHTING)
+        .help("Do not use CLI highlighting in the output")
         .required(false)
         .takes_value(false)
         .short("h")
-        .long("highlight-output");
+        .long("no-highlighting");
 
     let matches = App::new("aufind")
         .version(VERSION)

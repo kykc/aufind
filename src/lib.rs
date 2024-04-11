@@ -38,10 +38,8 @@ impl<'a> SearchArgs<'a> {
 
 impl<'a> Default for SearchArgs<'a> {
     fn default() -> Self {
-        let highlight_default = if cfg!(windows) { false } else { true };
-
         SearchArgs {
-            highlight: highlight_default,
+            highlight: true,
             pattern: DEFAULT_PATTERN,
             target: DEFAULT_TARGET,
             case_sensitive: false,

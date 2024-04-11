@@ -1,6 +1,6 @@
 [package]
 name = "aufind"
-version = "0.1.6"
+version = "0.2.0"
 authors = ["kykc"]
 edition = "2015"
 license = "MIT"
@@ -21,6 +21,7 @@ clap = "^2.32"
 rustyline = "^4"
 colored = "^1.6"
 dirs = "*"
+ignore = "0.4.22"
 
 [package.metadata.deb]
 depends = "libgcc1 (>= 1:6.3.0), libc6 (>= 2.24)"

@@ -13,33 +13,10 @@ const HISTORY_FILE: &'static str = ".aufind_history";
 const ARG_CASE_SENSITIVE: &'static str = "CASE_SENSITIVE";
 const ARG_PATTERN: &'static str = "PATTERN";
 const ARG_INCLUDE_DIRS: &'static str = "INCLUDE_DIRS";
-const ARG_INCLUDE_FILES: &'static str = "INCLUDE_FILES";
+const ARG_EXCLUDE_FILES: &'static str = "EXCLUDE_FILES";
 const ARG_HIGHLIGHT_OUTPUT: &'static str = "HIGHLIGHT_OUTPUT";
-
-const TRUE_STR: &'static str = "true";
-const FALSE_STR: &'static str = "false";
-
-const STRINGS_CONSIDERED_FALSE: [&'static str; 4] = ["false", "0", "", "no"];
-
-fn to_bool(val: &str) -> bool {
-    let lower = String::from(val).to_lowercase();
-    let mut result = true;
-    for pattern in STRINGS_CONSIDERED_FALSE.iter() {
-        if &lower == pattern {
-            result = false
-        }
-    }
-
-    result
-}
-
-fn from_bool(val: bool) -> &'static str {
-    if val {
-        TRUE_STR
-    } else {
-        FALSE_STR
-    }
-}
+const ARG_USE_GITIGNORE: &'static str = "USE_GITIGNORE";
+const ARG_EXCLUDE_HIDDEN: &'static str = "EXCLUDE_HIDDEN";
 
 fn query_worker(args: &aufindlib::SearchArgs) {
     let mut rl = Editor::<()>::new();
@@ -65,10 +42,12 @@ fn query_worker(args: &aufindlib::SearchArgs) {
 
 fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a> {
     let mut args = aufindlib::SearchArgs::default();
-    args.case_sensitive = to_bool(matches.value_of(ARG_CASE_SENSITIVE).expect("Defaulted option should always present"));
-    args.include_dirs = to_bool(matches.value_of(ARG_INCLUDE_DIRS).expect("Defaulted option should always present"));
-    args.include_files = to_bool(matches.value_of(ARG_INCLUDE_FILES).expect("Defaulted option should always present"));
-    args.highlight = to_bool(matches.value_of(ARG_HIGHLIGHT_OUTPUT).expect("Defaulted option should always present"));
+    args.case_sensitive = matches.is_present(ARG_CASE_SENSITIVE);
+    args.include_dirs = matches.is_present(ARG_INCLUDE_DIRS);
+    args.include_files = !matches.is_present(ARG_EXCLUDE_FILES);
+    args.highlight = matches.is_present(ARG_HIGHLIGHT_OUTPUT);
+    args.use_gitignore = matches.is_present(ARG_USE_GITIGNORE);
+    args.exclude_hidden = matches.is_present(ARG_EXCLUDE_HIDDEN);
 
     args
 }
@@ -79,32 +58,42 @@ fn main() {
     let arg_case_sensitive = Arg::with_name(ARG_CASE_SENSITIVE)
         .help("Toggle case sensitivity")
         .required(false)
-        .takes_value(true)
-        .default_value(from_bool(default_args.case_sensitive))
+        .takes_value(false)
         .short("c")
         .long("case-sensitive");
+
+    let arg_use_gitignore = Arg::with_name(ARG_USE_GITIGNORE)
+        .help("Use .gitignore files for filtering")
+        .required(false)
+        .takes_value(false)
+        .short("g")
+        .long("gitignore");
+
+    let arg_exclude_hidden = Arg::with_name(ARG_EXCLUDE_HIDDEN)
+        .help("Exclude hidden files and directories")
+        .required(false)
+        .takes_value(false)
+        .short("x")
+        .long("exclude-hidden");
 
     let arg_include_dirs = Arg::with_name(ARG_INCLUDE_DIRS)
         .help("Include directories in search results")
         .required(false)
-        .takes_value(true)
-        .default_value(from_bool(default_args.include_dirs))
+        .takes_value(false)
         .short("d")
         .long("include-dirs");
 
-    let arg_include_files = Arg::with_name(ARG_INCLUDE_FILES)
-        .help("Include files in search results")
+    let arg_exclude_files = Arg::with_name(ARG_EXCLUDE_FILES)
+        .help("Exclude files from search results")
         .required(false)
-        .takes_value(true)
-        .default_value(from_bool(default_args.include_files))
+        .takes_value(false)
         .short("f")
-        .long("include-files");
+        .long("exclude-files");
 
     let arg_highlight_output = Arg::with_name(ARG_HIGHLIGHT_OUTPUT)
         .help("Highlight matches in output")
         .required(false)
-        .takes_value(true)
-        .default_value(from_bool(default_args.highlight))
+        .takes_value(false)
         .short("h")
         .long("highlight-output");
 
@@ -116,8 +105,10 @@ fn main() {
                     .about("parse from CLI")
                     .arg(arg_case_sensitive.clone())
                     .arg(arg_include_dirs.clone())
-                    .arg(arg_include_files.clone())
+                    .arg(arg_exclude_files.clone())
                     .arg(arg_highlight_output.clone())
+                    .arg(arg_use_gitignore.clone())
+                    .arg(arg_exclude_hidden.clone())
                     .arg(Arg::with_name(ARG_PATTERN)
                          .help("Pattern to match")
                          .required(false)
@@ -127,8 +118,10 @@ fn main() {
                     .about("read from stdout")
                     .arg(arg_case_sensitive.clone())
                     .arg(arg_include_dirs.clone())
-                    .arg(arg_include_files.clone())
-                    .arg(arg_highlight_output.clone()))
+                    .arg(arg_exclude_files.clone())
+                    .arg(arg_highlight_output.clone())
+                    .arg(arg_use_gitignore.clone())
+                    .arg(arg_exclude_hidden.clone()))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("find") {

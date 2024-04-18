@@ -17,6 +17,7 @@ const ARG_EXCLUDE_FILES: &'static str = "EXCLUDE_FILES";
 const ARG_NO_OUTPUT_HIGHLIGHTING: &'static str = "NO_OUTPUT_HIGHLIGHTING";
 const ARG_USE_GITIGNORE: &'static str = "USE_GITIGNORE";
 const ARG_EXCLUDE_HIDDEN: &'static str = "EXCLUDE_HIDDEN";
+const ARG_DELVE: &'static str = "DELVE";
 
 fn query_worker(args: &aufindlib::SearchArgs) {
     let mut rl = Editor::<()>::new();
@@ -48,6 +49,7 @@ fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a
     args.highlight = !matches.is_present(ARG_NO_OUTPUT_HIGHLIGHTING);
     args.use_gitignore = matches.is_present(ARG_USE_GITIGNORE);
     args.exclude_hidden = matches.is_present(ARG_EXCLUDE_HIDDEN);
+    args.delve = matches.is_present(ARG_DELVE);
 
     args
 }
@@ -75,6 +77,12 @@ fn main() {
         .takes_value(false)
         .short("x")
         .long("exclude-hidden");
+
+    let arg_delve = Arg::with_name(ARG_DELVE)
+        .help("Delve into supported archive/image formats like ISO and treat the as directories")
+        .required(false)
+        .takes_value(false)
+        .long("delve");
 
     let arg_include_dirs = Arg::with_name(ARG_INCLUDE_DIRS)
         .help("Include directories in search results")
@@ -107,6 +115,7 @@ fn main() {
                     .arg(arg_include_dirs.clone())
                     .arg(arg_exclude_files.clone())
                     .arg(arg_highlight_output.clone())
+                    .arg(arg_delve.clone())
                     .arg(arg_use_gitignore.clone())
                     .arg(arg_exclude_hidden.clone())
                     .arg(Arg::with_name(ARG_PATTERN)
@@ -120,6 +129,7 @@ fn main() {
                     .arg(arg_include_dirs.clone())
                     .arg(arg_exclude_files.clone())
                     .arg(arg_highlight_output.clone())
+                    .arg(arg_delve.clone())
                     .arg(arg_use_gitignore.clone())
                     .arg(arg_exclude_hidden.clone()))
         .get_matches();

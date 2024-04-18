@@ -1,6 +1,8 @@
-extern crate colored;
+extern crate inline_colorization;
 
-use colored::*;
+use inline_colorization::*;
+
+pub mod delve;
 
 #[allow(dead_code)]
 const EMPTY_STRING: &'static str = "";
@@ -16,7 +18,8 @@ pub struct SearchArgs<'a> {
     pub include_dirs: bool,
     pub include_files: bool,
     pub use_gitignore: bool,
-    pub exclude_hidden: bool
+    pub exclude_hidden: bool,
+    pub delve: bool
 }
 
 impl<'a> SearchArgs<'a> {
@@ -46,7 +49,8 @@ impl<'a> Default for SearchArgs<'a> {
             include_dirs: false,
             include_files: true,
             use_gitignore: false,
-            exclude_hidden: false
+            exclude_hidden: false,
+            delve: false
         }
     }
 }
@@ -75,23 +79,58 @@ pub fn search<'a>(args: &'a SearchArgs, callback: &mut dyn FnMut(&str)) {
         .build();
 
     for entry in walker.into_iter().filter_map(|e| e.ok()).filter(filter.as_ref()) {
-        match &re {
-            Ok(reg) => {
-                if reg.is_match(entry.path().to_str().unwrap_or("")) {
-                    if args.highlight {
-                        let after = reg.replace_all(
-                            entry.path().to_str().unwrap_or(""), "$0".yellow().to_string().as_str());
-                        callback(&after);
-                    } else {
-                        callback(&entry.path().to_str().unwrap_or(""));
-                    }
+        let entry_path = entry.path().to_str().unwrap_or("");
+
+        // TODO: how to handle file itself? should be handled and treated as a directory and respect include_dirs I guess
+        #[cfg(feature = "iso-cdfs")]
+        if entry_path.ends_with(".iso") && args.delve {
+            match self::delve::iso_cdfs::handle_iso_file(entry_path, callback, &re, args.highlight) {
+                Err(e) => {
+                    let e_str = format!("{color_red}ERR: {}{color_reset}", e);
+                    //callback(&e_str.red().to_string()); // TODO: separate error callback?
+                    callback(&e_str);
                 }
-            },
-            Err(_x) => { callback(&entry.path().to_str().unwrap_or("")); }
-        };
+                _ => ()
+            }
+        }
+
+        handle_entry(&re, callback, entry_path, args.highlight, Option::None);
     }
 }
 
+pub fn handle_entry(regex: &Result<regex::Regex, regex::Error>, callback: &mut dyn FnMut(&str), entry_path: &str, highlight: bool, additional_style: Option<&regex::Regex>) {
+
+    let mut result = entry_path.to_string();
+    let mut is_match = true; // to output everything if regex parsing failed
+
+    if highlight {
+        match additional_style {
+            Some(style) => {
+                //result = style.replace_all(&result, "$0".underline().to_string().as_str()).to_string();
+                result = style.replace_all(&result, format!("{style_underline}$0{style_reset}")).to_string();
+            },
+            _ => ()
+        }
+    }
+
+    match regex {
+        Ok(reg) => {
+            is_match = reg.is_match(entry_path);
+
+            if is_match && highlight {
+                //result = reg.replace_all(&result, "$0".yellow().to_string().as_str()).to_string();
+                result = reg.replace_all(&result, format!("{color_yellow}$0{color_reset}")).to_string();
+            }
+        },
+        _ => ()
+    }
+
+    if is_match {
+        callback(&result);
+    }
+}
+
+// TODO: create separate test-data directory and do not use source itself for this purpose. Add tests for delve (valid iso, invalid iso, etc)
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -104,9 +143,9 @@ mod tests {
 
         super::search(&args, &mut |x| results.push(String::from(x)));
 
-        assert_eq!(results.len(), 2);
-        assert_eq!(Path::new(&results[0]), Path::new(".").join("src").join("lib.rs"));
-        assert_eq!(Path::new(&results[1]), Path::new(".").join("src").join("main.rs"));
+        assert_eq!(results.len(), 4);
+        assert_eq!(Path::new(&results[0]), Path::new(".").join("src").join("delve").join("iso_cdfs.rs"));
+        assert_eq!(Path::new(&results[1]), Path::new(".").join("src").join("delve").join("mod.rs"));
     }
 
     #[test]

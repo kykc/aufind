@@ -19,9 +19,15 @@ walkdir = "*"
 regex = "*"
 clap = "^2.32"
 rustyline = "^4"
-colored = "^1.6"
 dirs = "*"
 ignore = "0.4.22"
+# 0.2.3 which is currently published doesn't separate the lib itself and fuse part
+cdfs = { git = "https://git.sr.ht/~az1/iso9660-rs", rev = "8cc434a319832ae43d1c7685477809d75f313990", optional = true }
+inline_colorization = "0.1.6"
 
 [package.metadata.deb]
 depends = "libgcc1 (>= 1:6.3.0), libc6 (>= 2.24)"
+
+[features]
+default = ["iso-cdfs"]
+iso-cdfs = ["dep:cdfs"]

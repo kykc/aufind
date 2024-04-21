@@ -31,7 +31,7 @@ fn query_worker(args: &aufindlib::SearchArgs) {
 
     match read_line {
         Ok(line) => {
-            aufindlib::search(&args.with_pattern(&line), &mut |x| println!("{}", x));
+            aufindlib::search(&args.with_pattern(&line), &mut aufindlib::SearchEventHandler {handle_item: &mut |x| println!("{}", x), handle_error: &mut |x| eprintln!("{}", x)});
             rl.add_history_entry(line.as_str());
             rl.save_history(&history_file).expect("Failed to store history");
         },
@@ -138,7 +138,7 @@ fn main() {
         let default_pattern = default_args.construct_pattern();
         let args = args_from_matches(&matches)
             .with_pattern(matches.value_of(ARG_PATTERN).unwrap_or(&default_pattern));
-        aufindlib::search(&args, &mut |x| println!("{}", x));
+        aufindlib::search(&args, &mut aufindlib::SearchEventHandler{handle_item: &mut |x| println!("{}", x), handle_error: &mut |x| eprintln!("{}", x)});
     } else if let Some(matches) = matches.subcommand_matches("query") {
         let args = args_from_matches(&matches);
         query_worker(&args);

@@ -1,6 +1,6 @@
 [package]
 name = "aufind"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["kykc"]
 edition = "2015"
 license = "MIT"
@@ -21,13 +21,23 @@ clap = "^2.32"
 rustyline = "^4"
 dirs = "*"
 ignore = "0.4.22"
+inline_colorization = "0.1.6"
 # 0.2.3 which is currently published doesn't separate the lib itself and fuse part
 cdfs = { git = "https://git.sr.ht/~az1/iso9660-rs", rev = "8cc434a319832ae43d1c7685477809d75f313990", optional = true }
-inline_colorization = "0.1.6"
+zip = { version = "^0.6", optional = true }
+unrar = { version = "0.5.3", optional = true }
+tar = { version = "^0.4", optional = true }
+flate2 = { version = "^1.0", optional = true }
+bzip2 = { version = "^0.4", optional = true, features = ["static"] }
+sevenz-rust = { version = "^0.6", optional = true }
 
 [package.metadata.deb]
 depends = "libgcc1 (>= 1:6.3.0), libc6 (>= 2.24)"
 
 [features]
-default = ["iso-cdfs"]
-iso-cdfs = ["dep:cdfs"]
+default = ["delve-iso", "delve-zip", "delve-rar", "delve-tar", "delve-7zip"]
+delve-iso = ["dep:cdfs"]
+delve-zip = ["dep:zip"]
+delve-rar = ["dep:unrar"]
+delve-tar = ["dep:tar", "dep:flate2", "dep:bzip2"]
+delve-7zip = ["dep:sevenz-rust"]

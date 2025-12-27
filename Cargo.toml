@@ -3,6 +3,7 @@ name = "aufind"
 version = "0.3.0"
 authors = ["kykc"]
 edition = "2015"
+rust-version = "1.75"
 license = "MIT"
 description = "Simple file search with possibility to avoid shell escaping regexes"
 

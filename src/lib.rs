@@ -1,6 +1,7 @@
 extern crate inline_colorization;
 
 use inline_colorization::*;
+use std::sync::{mpsc, Arc};
 
 pub mod delve;
 
@@ -10,128 +11,180 @@ pub const DEFAULT_PATTERN: &'static str = ".*";
 pub const DEFAULT_TARGET: &'static str = ".";
 
 #[derive(Clone, Debug)]
-pub struct SearchArgs<'a> {
+pub struct SearchArgs {
     pub highlight: bool,
-    pattern: &'a str,
-    pub target: &'a str,
+    pattern: String,
+    pub target: String,
     pub case_sensitive: bool,
     pub include_dirs: bool,
     pub include_files: bool,
     pub use_gitignore: bool,
     pub exclude_hidden: bool,
-    pub delve: bool
+    pub delve: bool,
+    pub parallel: bool,
 }
 
 pub struct SearchEventHandler<'a> {
     pub handle_item: &'a mut dyn FnMut(&str),
-    pub handle_error: &'a mut dyn FnMut(&str)
+    pub handle_error: &'a mut dyn FnMut(&str),
 }
 
-impl<'a> SearchArgs<'a> {
-    pub fn with_pattern(&self, pattern: &'a str) -> Self {
+impl SearchArgs {
+    pub fn with_pattern(&self, pattern: &str) -> Self {
         let mut result = self.clone();
-        result.pattern = pattern;
-
+        result.pattern = pattern.to_owned();
         result
     }
 
     pub fn construct_pattern(&self) -> String {
         if !self.case_sensitive {
-            String::from("(?i)") + self.pattern
+            String::from("(?i)") + &self.pattern
         } else {
-            String::from(self.pattern)
+            self.pattern.clone()
         }
     }
 }
 
-impl<'a> Default for SearchArgs<'a> {
+impl Default for SearchArgs {
     fn default() -> Self {
         SearchArgs {
             highlight: true,
-            pattern: DEFAULT_PATTERN,
-            target: DEFAULT_TARGET,
+            pattern: String::from(DEFAULT_PATTERN),
+            target: String::from(DEFAULT_TARGET),
             case_sensitive: false,
             include_dirs: false,
             include_files: true,
             use_gitignore: false,
             exclude_hidden: false,
-            delve: false
+            delve: false,
+            parallel: false,
         }
     }
 }
 
-pub fn search<'a>(args: &'a SearchArgs, search_handler: &'a mut SearchEventHandler) {
-    let re = regex::Regex::new(&args.construct_pattern());
+enum SearchEvent {
+    Item(String),
+    Error(String),
+}
 
-    let filter: Box<dyn Fn(&ignore::DirEntry) -> bool> =
-        if args.include_dirs && args.include_files {
-            Box::new(|_| true)
-        } else if args.include_dirs {
-            Box::new(|x| x.path().is_dir())
-        } else if args.include_files {
-            Box::new(|x| x.path().exists() && !x.path().is_dir())
-        } else {
-            Box::new(|_| false)
-        };
+fn configure_walker(args: &SearchArgs) -> ignore::WalkBuilder {
+    let mut b = ignore::WalkBuilder::new(&args.target);
+    b.hidden(args.exclude_hidden)
+     .parents(args.use_gitignore)
+     .ignore(args.use_gitignore)
+     .git_ignore(args.use_gitignore)
+     .git_global(args.use_gitignore)
+     .git_exclude(args.use_gitignore);
+    b
+}
 
-    let walker = ignore::WalkBuilder::new(args.target)
-        .hidden(args.exclude_hidden)
-        .parents(args.use_gitignore)
-        .ignore(args.use_gitignore)
-        .git_ignore(args.use_gitignore)
-        .git_global(args.use_gitignore)
-        .git_exclude(args.use_gitignore)
-        .build();
+fn build_handlers() -> Vec<Box<dyn delve::DelveHandler + Send + Sync>> {
+    let mut handlers: Vec<Box<dyn delve::DelveHandler + Send + Sync>> = Vec::new();
+    #[cfg(feature = "delve-iso")] handlers.push(Box::new(delve::delve_iso::IsoDelveHandler {}));
+    #[cfg(feature = "delve-zip")] handlers.push(Box::new(delve::delve_zip::ZipDelveHandler {}));
+    #[cfg(feature = "delve-rar")] handlers.push(Box::new(delve::delve_rar::RarDelveHandler {}));
+    #[cfg(feature = "delve-tar")] handlers.push(Box::new(delve::delve_tar::TarGzDelveHandler {}));
+    #[cfg(feature = "delve-tar")] handlers.push(Box::new(delve::delve_tar::TarBz2DelveHandler {}));
+    #[cfg(feature = "delve-tar")] handlers.push(Box::new(delve::delve_tar::TarDelveHandler {}));
+    #[cfg(feature = "delve-7zip")] handlers.push(Box::new(delve::delve_7zip::SevenZipDelveHandler {}));
+    handlers
+}
 
-    let mut handlers: Vec<&dyn delve::DelveHandler> = Vec::new();
+fn process_entry(
+    entry: &ignore::DirEntry,
+    re: &Result<regex::Regex, regex::Error>,
+    args: &SearchArgs,
+    handlers: &[Box<dyn delve::DelveHandler + Send + Sync>],
+    item_cb: &mut dyn FnMut(&str),
+    error_cb: &mut dyn FnMut(&str),
+) {
+    let file_type = entry.file_type();
+    let is_dir = file_type.map(|ft| ft.is_dir()).unwrap_or(false);
+    let is_file = file_type.map(|ft| ft.is_file()).unwrap_or(false);
 
-    // As this function is called only once per app launch (with the exception of unit tests) it is OK to construct this state here
-    // Well, and this is just a modest amount of references to empty objects with the sole purpose of dynamic dispatch/late runtime binding
-    #[cfg(feature = "delve-iso")]
-    handlers.push(&delve::delve_iso::IsoDelveHandler{});
-    #[cfg(feature = "delve-zip")]
-    handlers.push(&delve::delve_zip::ZipDelveHandler{});
-    #[cfg(feature = "delve-rar")]
-    handlers.push(&delve::delve_rar::RarDelveHandler{});
-    #[cfg(feature = "delve-tar")]
-    handlers.push(&delve::delve_tar::TarGzDelveHandler{});
-    #[cfg(feature = "delve-tar")]
-    handlers.push(&delve::delve_tar::TarBz2DelveHandler{});
-    #[cfg(feature = "delve-tar")]
-    handlers.push(&delve::delve_tar::TarDelveHandler{});
-    #[cfg(feature = "delve-7zip")]
-    handlers.push(&delve::delve_7zip::SevenZipDelveHandler{});
+    let should_output = match (args.include_dirs, args.include_files) {
+        (true, true) => true,
+        (true, false) => is_dir,
+        (false, true) => is_file,
+        (false, false) => false,
+    };
 
-    for entry in walker.into_iter().filter_map(|e| e.ok()).filter(filter.as_ref()) {
-        let entry_path = entry.path().to_str().unwrap_or("");
+    if !should_output { return; }
 
-        // TODO: how to handle file itself? should be handled and treated as a directory and respect include_dirs I guess
+    let entry_path = match entry.path().to_str() {
+        Some(s) => s,
+        None => return,
+    };
 
-        if args.delve {
-            for handler in &handlers {
-                if handler.can_handle_file(entry_path) {
-                    match handler.handle_file(entry_path, search_handler.handle_item, &re, args) {
-                        Err(e) => {
-                            if args.highlight {
-                                (search_handler.handle_error)(&format!("{color_red}ERR: {}{color_reset}", e));
-                            } else {
-                                (search_handler.handle_error)(&format!("ERR: {}", e));
-                            }
-                        },
-                        _ => ()
-                    }
+    if args.delve {
+        for handler in handlers.iter() {
+            if handler.can_handle_file(entry_path) {
+                match handler.handle_file(entry_path, item_cb, re, args) {
+                    Err(e) => {
+                        let msg = if args.highlight {
+                            format!("{color_red}ERR: {}{color_reset}", e)
+                        } else {
+                            format!("ERR: {}", e)
+                        };
+                        error_cb(&msg);
+                    },
+                    _ => ()
                 }
             }
         }
+    }
 
-        handle_entry(&re, search_handler.handle_item, entry_path, args.highlight, Option::None);
+    handle_entry(re, item_cb, entry_path, args.highlight, None);
+}
+
+pub fn search(args: &SearchArgs, search_handler: &mut SearchEventHandler) {
+    let re = regex::Regex::new(&args.construct_pattern());
+    let handlers = build_handlers();
+
+    if args.parallel {
+        let re = Arc::new(re);
+        let handlers = Arc::new(handlers);
+        let mut wb = configure_walker(args);
+        wb.threads(num_cpus::get());
+        let walker = wb.build_parallel();
+        let (tx, rx) = mpsc::channel::<SearchEvent>();
+        let args_owned = args.clone();
+
+        std::thread::spawn(move || {
+            walker.run(move || {
+                let tx = tx.clone();
+                let re = Arc::clone(&re);
+                let args = args_owned.clone();
+                let handlers = Arc::clone(&handlers);
+
+                Box::new(move |entry: Result<ignore::DirEntry, ignore::Error>| -> ignore::WalkState {
+                    if let Ok(e) = entry {
+                        let mut item_cb = |s: &str| { let _ = tx.send(SearchEvent::Item(s.to_owned())); };
+                        let mut error_cb = |s: &str| { let _ = tx.send(SearchEvent::Error(s.to_owned())); };
+                        process_entry(&e, &*re, &args, &handlers, &mut item_cb, &mut error_cb);
+                    }
+                    ignore::WalkState::Continue
+                })
+            });
+        });
+
+        for event in rx {
+            match event {
+                SearchEvent::Item(s) => (search_handler.handle_item)(&s),
+                SearchEvent::Error(s) => (search_handler.handle_error)(&s),
+            }
+        }
+    } else {
+        let walker = configure_walker(args).build();
+        for entry in walker.into_iter().filter_map(|e| e.ok()) {
+            process_entry(&entry, &re, args, &handlers, search_handler.handle_item, search_handler.handle_error);
+        }
     }
 }
 
 pub fn handle_entry(regex: &Result<regex::Regex, regex::Error>, callback: &mut dyn FnMut(&str), entry_path: &str, highlight: bool, additional_style: Option<&regex::Regex>) {
-
     let mut result = entry_path.to_string();
-    let mut is_match = true; // to output everything if regex parsing failed
+    let mut is_match = true;
 
     if highlight {
         match additional_style {
@@ -189,7 +242,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("file_two\\.bin$");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.use_gitignore = true;
 
         {
@@ -226,7 +279,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("FILE_TWO\\.bin$");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.case_sensitive = true;
 
         {
@@ -262,7 +315,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("GPL_3_0");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.delve = true;
 
         let mut search_handler = SearchEventHandler {
@@ -285,7 +338,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("rar_archive_file");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.delve = true;
 
         let mut search_handler = SearchEventHandler {
@@ -305,7 +358,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("7z_archive_file");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.delve = true;
 
         let mut search_handler = SearchEventHandler {
@@ -325,7 +378,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("tar_archive_file");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.delve = true;
 
         let mut search_handler = SearchEventHandler {
@@ -345,7 +398,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("targz_archive_file");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.delve = true;
 
         let mut search_handler = SearchEventHandler {
@@ -365,7 +418,7 @@ mod tests {
         let mut errors = Vec::new();
         let mut args = super::SearchArgs::default().with_pattern("tarbz_archive_file");
         args.highlight = false;
-        args.target = "./test-data";
+        args.target = String::from("./test-data");
         args.delve = true;
 
         let mut search_handler = SearchEventHandler {

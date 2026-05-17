@@ -24,7 +24,7 @@ impl DelveError {
     }
 }
 
-pub trait DelveHandler {
+pub trait DelveHandler: Send + Sync {
     fn handle_file(&self, file_path: &str, callback: &mut dyn FnMut(&str), regex: &Result<regex::Regex, regex::Error>, args: &SearchArgs) -> Result<(), DelveError>;
     fn can_handle_file(&self, file_path: &str) -> bool;
 }

@@ -18,6 +18,7 @@ const ARG_NO_OUTPUT_HIGHLIGHTING: &'static str = "NO_OUTPUT_HIGHLIGHTING";
 const ARG_USE_GITIGNORE: &'static str = "USE_GITIGNORE";
 const ARG_EXCLUDE_HIDDEN: &'static str = "EXCLUDE_HIDDEN";
 const ARG_DELVE: &'static str = "DELVE";
+const ARG_PARALLEL: &'static str = "PARALLEL";
 
 fn query_worker(args: &aufindlib::SearchArgs) {
     let mut rl = Editor::<()>::new();
@@ -41,7 +42,7 @@ fn query_worker(args: &aufindlib::SearchArgs) {
     }
 }
 
-fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a> {
+fn args_from_matches(matches: &clap::ArgMatches) -> aufindlib::SearchArgs {
     let mut args = aufindlib::SearchArgs::default();
     args.case_sensitive = matches.is_present(ARG_CASE_SENSITIVE);
     args.include_dirs = matches.is_present(ARG_INCLUDE_DIRS);
@@ -50,6 +51,7 @@ fn args_from_matches<'a>(matches: &clap::ArgMatches) -> aufindlib::SearchArgs<'a
     args.use_gitignore = matches.is_present(ARG_USE_GITIGNORE);
     args.exclude_hidden = matches.is_present(ARG_EXCLUDE_HIDDEN);
     args.delve = matches.is_present(ARG_DELVE);
+    args.parallel = matches.is_present(ARG_PARALLEL);
 
     args
 }
@@ -83,6 +85,13 @@ fn main() {
         .required(false)
         .takes_value(false)
         .long("delve");
+
+    let arg_parallel = Arg::with_name(ARG_PARALLEL)
+        .help("Use parallel walker for higher throughput (implies arbitrary output order)")
+        .required(false)
+        .takes_value(false)
+        .short("p")
+        .long("parallel");
 
     let arg_include_dirs = Arg::with_name(ARG_INCLUDE_DIRS)
         .help("Include directories in search results")
@@ -118,6 +127,7 @@ fn main() {
                     .arg(arg_delve.clone())
                     .arg(arg_use_gitignore.clone())
                     .arg(arg_exclude_hidden.clone())
+                    .arg(arg_parallel.clone())
                     .arg(Arg::with_name(ARG_PATTERN)
                          .help("Pattern to match")
                          .required(false)
@@ -131,7 +141,8 @@ fn main() {
                     .arg(arg_highlight_output.clone())
                     .arg(arg_delve.clone())
                     .arg(arg_use_gitignore.clone())
-                    .arg(arg_exclude_hidden.clone()))
+                    .arg(arg_exclude_hidden.clone())
+                    .arg(arg_parallel.clone()))
         .get_matches();
 
     if let Some(matches) = matches.subcommand_matches("find") {
